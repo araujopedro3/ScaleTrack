@@ -1,5 +1,6 @@
 package br.com.scaletrack.model;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -360,13 +361,18 @@ public class Balanca {
         this.status = StatusBalanca.EM_TESTE;
     }
 
+
     public void liberarBalanca() {
         if (status != StatusBalanca.EM_TESTE) {
-            throw new IllegalArgumentException("Balança precisa estar em Teste para ser Liberada!");
+            throw new IllegalArgumentException(
+                    "Balança precisa estar em Teste para ser Liberada!"
+            );
         }
 
         if (historicoTestes.isEmpty()) {
-            throw new IllegalArgumentException("A balança precisa de pelo menos 1 teste para ser Liberada");
+            throw new IllegalArgumentException(
+                    "A balança precisa de testes para ser Liberada."
+            );
         }
 
         boolean testeCarga = false;
@@ -374,34 +380,45 @@ public class Balanca {
         boolean testeExcentricidade = false;
         boolean testeCelulas = false;
 
+        LocalDate hoje = LocalDate.now();
+
         for (TesteBalanca teste : historicoTestes) {
+            boolean dentroDoPrazo =
+                    !teste.getData().plusMonths(3).isBefore(hoje);
+
+            boolean aprovadoEValido =
+                    teste.isAprovado() && dentroDoPrazo;
 
             switch (teste.getTipo()) {
-
                 case CARGA:
-                    testeCarga = teste.isAprovado();
+                    testeCarga = aprovadoEValido;
                     break;
 
-                    case REPETIBILIDADE:
-                        testeRepetibilidade = teste.isAprovado();
-                        break;
+                case REPETIBILIDADE:
+                    testeRepetibilidade = aprovadoEValido;
+                    break;
 
-                        case EXCENTRICIDADE:
-                            testeExcentricidade = teste.isAprovado();
-                            break;
+                case EXCENTRICIDADE:
+                    testeExcentricidade = aprovadoEValido;
+                    break;
 
-                                case VERIFICACAO_CELULAS:
-                                    testeCelulas = teste.isAprovado();
-                                    break;
+                case VERIFICACAO_CELULAS:
+                    testeCelulas = aprovadoEValido;
+                    break;
             }
         }
 
-        if (!testeCarga || !testeRepetibilidade || !testeExcentricidade || !testeCelulas) {
-            throw new IllegalArgumentException("Todos os testes obrigatórios precisam ser realizados para liberar a balança.");
+        if (!testeCarga || !testeRepetibilidade
+                || !testeExcentricidade || !testeCelulas) {
+            throw new IllegalArgumentException(
+                    "Todos os testes obrigatórios precisam estar aprovados "
+                            + "e dentro do prazo de 3 meses para liberar a balança."
+            );
         }
 
         this.status = StatusBalanca.LIBERADA;
     }
+
 
     public void iniciarManutencao() {
         if (status != StatusBalanca.LIBERADA) {
